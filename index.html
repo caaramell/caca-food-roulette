@@ -7,43 +7,49 @@
   <title>Caca's Food Roulette</title>
 
   <style>
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       font-family: Arial, sans-serif;
-      background: #fff7fb;
+      background: #fff8fb;
       margin: 0;
-      padding: 30px 20px;
+      padding: 24px;
       color: #333;
     }
 
     .container {
-      max-width: 900px;
+      max-width: 1200px;
       margin: auto;
     }
 
     h1 {
       text-align: center;
-      margin-bottom: 5px;
+      margin: 5px 0;
+      font-size: 28px;
     }
 
     .subtitle {
       text-align: center;
       color: #777;
-      margin-bottom: 30px;
+      margin: 5px 0 25px;
+      font-size: 14px;
     }
 
     .buttons {
       display: flex;
       justify-content: center;
-      gap: 10px;
-      margin-bottom: 25px;
+      gap: 8px;
+      margin-bottom: 18px;
     }
 
     button {
       border: none;
-      padding: 12px 20px;
-      border-radius: 12px;
+      padding: 9px 16px;
+      border-radius: 9px;
       cursor: pointer;
-      font-size: 15px;
+      font-size: 13px;
       background: #eee;
     }
 
@@ -54,45 +60,77 @@
 
     #count {
       text-align: center;
-      margin-bottom: 20px;
-      color: #777;
+      color: #888;
+      font-size: 13px;
+      margin-bottom: 12px;
     }
 
-    .restaurant-list {
-      display: grid;
-      gap: 15px;
-    }
+    /* =========================
+       TABLE
+       ========================= */
 
-    .card {
+    .table-wrapper {
+      width: 100%;
+      overflow-x: auto;
       background: white;
-      border-radius: 16px;
-      padding: 20px;
-      box-shadow: 0 3px 12px rgba(0,0,0,0.08);
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
     }
 
-    .card h2 {
-      margin-top: 0;
-      margin-bottom: 10px;
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      min-width: 850px;
     }
 
-    .info {
-      color: #666;
-      margin: 7px 0;
+    th {
+      background: #f6f6f6;
+      font-weight: 600;
+      text-align: left;
+      padding: 10px 9px;
+      border-bottom: 1px solid #ddd;
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 9px;
+      border-bottom: 1px solid #eee;
+      vertical-align: middle;
+    }
+
+    tr:hover {
+      background: #fffafd;
+    }
+
+    .place-name {
+      font-weight: 600;
+      font-size: 13px;
     }
 
     .maps-button {
       display: inline-block;
-      margin-top: 12px;
-      padding: 9px 14px;
-      background: #eee;
-      border-radius: 10px;
+      padding: 5px 8px;
+      background: #f1f1f1;
+      border-radius: 6px;
       text-decoration: none;
       color: #333;
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .maps-button:hover {
+      background: #e5e5e5;
+    }
+
+    .status {
+      white-space: nowrap;
     }
 
     #loading {
       text-align: center;
-      padding: 30px;
+      padding: 25px;
+      color: #777;
     }
 
     #error {
@@ -100,8 +138,35 @@
       color: #d33;
       padding: 20px;
     }
+
+    @media (max-width: 600px) {
+
+      body {
+        padding: 15px;
+      }
+
+      h1 {
+        font-size: 23px;
+      }
+
+      .subtitle {
+        font-size: 12px;
+      }
+
+      table {
+        font-size: 11px;
+      }
+
+      th,
+      td {
+        padding: 7px;
+      }
+
+    }
+
   </style>
 </head>
+
 
 <body>
 
@@ -112,6 +177,7 @@
     <p class="subtitle">
       Males milih makan dimana? Yaudah, biar nasib yang milih. 🎰
     </p>
+
 
     <div class="buttons">
 
@@ -125,20 +191,29 @@
 
     </div>
 
+
     <div id="count"></div>
+
 
     <div id="loading">
       Lagi mengambil data restoran... 🍜
     </div>
 
+
     <div id="error"></div>
 
-    <div id="restaurantList" class="restaurant-list"></div>
+
+    <div id="restaurantList"></div>
 
   </div>
 
 
+
   <script>
+
+    // =========================
+    // GOOGLE SHEET
+    // =========================
 
     const CSV_URL =
       "https://docs.google.com/spreadsheets/d/e/2PACX-1vRGeVKCr17Fo4yJfkrhh138fDmabvVz2n6X_U8Rt3de82bovXJe3t_VdTmTCyTva1dd7LsXLjJU755e/pub?gid=822459822&single=true&output=csv";
@@ -150,7 +225,7 @@
 
 
     // =========================
-    // MEMBACA CSV
+    // CSV READER
     // =========================
 
     function parseCSV(text) {
@@ -171,7 +246,11 @@
         const nextChar = text[i + 1];
 
 
-        if (char === '"' && insideQuotes && nextChar === '"') {
+        if (
+          char === '"' &&
+          insideQuotes &&
+          nextChar === '"'
+        ) {
 
           cell += '"';
 
@@ -179,13 +258,18 @@
 
         }
 
+
         else if (char === '"') {
 
           insideQuotes = !insideQuotes;
 
         }
 
-        else if (char === "," && !insideQuotes) {
+
+        else if (
+          char === "," &&
+          !insideQuotes
+        ) {
 
           row.push(cell);
 
@@ -193,14 +277,21 @@
 
         }
 
+
         else if (
           (char === "\n" || char === "\r") &&
           !insideQuotes
         ) {
 
-          if (char === "\r" && nextChar === "\n") {
+          if (
+            char === "\r" &&
+            nextChar === "\n"
+          ) {
+
             i++;
+
           }
+
 
           row.push(cell);
 
@@ -212,6 +303,7 @@
 
         }
 
+
         else {
 
           cell += char;
@@ -221,7 +313,10 @@
       }
 
 
-      if (cell !== "" || row.length > 0) {
+      if (
+        cell !== "" ||
+        row.length > 0
+      ) {
 
         row.push(cell);
 
@@ -236,7 +331,7 @@
 
 
     // =========================
-    // NORMALISASI
+    // NORMALIZE
     // =========================
 
     function normalize(text) {
@@ -250,21 +345,28 @@
 
 
     // =========================
-    // MENCARI ISI KOLOM
+    // GET COLUMN
     // =========================
 
-    function getColumn(restaurant, columnName) {
+    function getColumn(
+      restaurant,
+      columnName
+    ) {
 
-      const header = Object.keys(restaurant).find(
+      const header =
+        Object.keys(restaurant).find(
 
-        header =>
-          normalize(header) === normalize(columnName)
+          header =>
+            normalize(header) ===
+            normalize(columnName)
 
-      );
+        );
 
 
       if (!header) {
+
         return "";
+
       }
 
 
@@ -274,37 +376,86 @@
 
 
     // =========================
-    // CEK SUDAH VISIT
+    // CHECK VISITED
     // =========================
 
     function isVisited(restaurant) {
 
-      const status =
-        normalize(
-          getColumn(restaurant, "udah apa belom")
+      const rawStatus =
+        getColumn(
+          restaurant,
+          "udah apa belom"
         );
 
 
-      return (
+      const status =
+        normalize(rawStatus);
+
+
+      /*
+        Kita anggap VISITED kalau
+        isi kolom menunjukkan bahwa
+        tempat tersebut sudah didatangi.
+      */
+
+
+      if (
+        status === "" ||
+        status === "-" ||
+        status === "no" ||
+        status === "belum" ||
+        status === "belom" ||
+        status === "belum visit"
+      ) {
+
+        return false;
+
+      }
+
+
+      if (
+        status === "yes" ||
+        status === "ya" ||
+        status === "y" ||
+        status === "1" ||
+        status === "true" ||
+        status === "sudah" ||
+        status === "udah" ||
+        status === "visited" ||
+        status === "visit"
+      ) {
+
+        return true;
+
+      }
+
+
+      if (
         status.includes("sudah") ||
         status.includes("udah") ||
-        status.includes("visited") ||
-        status === "yes" ||
-        status === "ya"
-      );
+        status.includes("visited")
+      ) {
+
+        return true;
+
+      }
+
+
+      return false;
 
     }
 
 
     // =========================
-    // LOAD DATA
+    // LOAD RESTAURANTS
     // =========================
 
     async function loadRestaurants() {
 
       try {
 
-        const response = await fetch(CSV_URL);
+        const response =
+          await fetch(CSV_URL);
 
 
         if (!response.ok) {
@@ -316,10 +467,12 @@
         }
 
 
-        const text = await response.text();
+        const text =
+          await response.text();
 
 
-        const rows = parseCSV(text);
+        const rows =
+          parseCSV(text);
 
 
         if (rows.length < 2) {
@@ -331,37 +484,41 @@
         }
 
 
-        const headers = rows[0];
+        const headers =
+          rows[0];
 
 
-        restaurants = rows
-          .slice(1)
-          .filter(row =>
-            row.some(
-              cell => String(cell).trim() !== ""
+        restaurants =
+          rows
+            .slice(1)
+            .filter(row =>
+              row.some(
+                cell =>
+                  String(cell).trim() !== ""
+              )
             )
-          )
-          .map(row => {
+            .map(row => {
 
-            const restaurant = {};
-
-
-            headers.forEach(
-              (header, index) => {
-
-                restaurant[header] =
-                  row[index] || "";
-
-              }
-            );
+              const restaurant = {};
 
 
-            return restaurant;
+              headers.forEach(
+                (header, index) => {
 
-          });
+                  restaurant[header] =
+                    row[index] || "";
+
+                }
+              );
 
 
-        document.getElementById("loading")
+              return restaurant;
+
+            });
+
+
+        document
+          .getElementById("loading")
           .style.display = "none";
 
 
@@ -372,11 +529,13 @@
 
       catch (error) {
 
-        document.getElementById("loading")
+        document
+          .getElementById("loading")
           .style.display = "none";
 
 
-        document.getElementById("error")
+        document
+          .getElementById("error")
           .textContent =
             "Aduh, datanya belum bisa dibaca 😭 " +
             error.message;
@@ -390,18 +549,18 @@
 
 
     // =========================
-    // TAMPILKAN RESTORAN
+    // RENDER TABLE
     // =========================
 
     function renderRestaurants() {
 
-      const list =
+      const container =
         document.getElementById(
           "restaurantList"
         );
 
 
-      list.innerHTML = "";
+      container.innerHTML = "";
 
 
       let filteredRestaurants;
@@ -411,16 +570,19 @@
 
         filteredRestaurants =
           restaurants.filter(
-            restaurant => !isVisited(restaurant)
+            restaurant =>
+              !isVisited(restaurant)
           );
 
       }
+
 
       else {
 
         filteredRestaurants =
           restaurants.filter(
-            restaurant => isVisited(restaurant)
+            restaurant =>
+              isVisited(restaurant)
           );
 
       }
@@ -432,18 +594,15 @@
           " tempat";
 
 
-      if (filteredRestaurants.length === 0) {
+      if (
+        filteredRestaurants.length === 0
+      ) {
 
-        list.innerHTML = `
+        container.innerHTML = `
 
-          <div class="card">
+          <div id="error">
 
-            <h2>Belum ada data 😭</h2>
-
-            <p>
-              Coba cek lagi kolom
-              "udah apa belom" di Google Sheet lo.
-            </p>
+            Belum ada restoran di kategori ini 😭
 
           </div>
 
@@ -452,6 +611,55 @@
         return;
 
       }
+
+
+      const wrapper =
+        document.createElement("div");
+
+
+      wrapper.className =
+        "table-wrapper";
+
+
+      const table =
+        document.createElement("table");
+
+
+      table.innerHTML = `
+
+        <thead>
+
+          <tr>
+
+            <th>Tempat</th>
+
+            <th>Kategori</th>
+
+            <th>Area</th>
+
+            <th>F&B</th>
+
+            <th>Ambience</th>
+
+            <th>Time</th>
+
+            <th>Revisit?</th>
+
+            <th>Status</th>
+
+            <th>Maps</th>
+
+          </tr>
+
+        </thead>
+
+        <tbody></tbody>
+
+      `;
+
+
+      const tbody =
+        table.querySelector("tbody");
 
 
       filteredRestaurants.forEach(
@@ -472,13 +680,6 @@
             );
 
 
-          const spotHere =
-            getColumn(
-              restaurant,
-              "spot here"
-            );
-
-
           const area =
             getColumn(
               restaurant,
@@ -486,14 +687,7 @@
             );
 
 
-          const visitStatus =
-            getColumn(
-              restaurant,
-              "udah apa belom"
-            );
-
-
-          const foodRating =
+          const food =
             getColumn(
               restaurant,
               "f&b"
@@ -521,124 +715,112 @@
             );
 
 
+          const spotHere =
+            getColumn(
+              restaurant,
+              "spot here"
+            );
+
+
+          const visitStatus =
+            getColumn(
+              restaurant,
+              "udah apa belom"
+            );
+
+
           const mapsLink =
             spotHere &&
             (
-              spotHere.startsWith("http://") ||
-              spotHere.startsWith("https://")
+              spotHere.startsWith(
+                "http://"
+              ) ||
+              spotHere.startsWith(
+                "https://"
+              )
             )
+
               ? spotHere
-              : (
+
+              :
+
                 "https://www.google.com/maps/search/?api=1&query=" +
                 encodeURIComponent(
                   name + " " + spotHere
-                )
-              );
+                );
 
 
-          const card =
-            document.createElement("div");
+          const tr =
+            document.createElement("tr");
 
 
-          card.className = "card";
+          tr.innerHTML = `
 
+            <td>
+              <span class="place-name">
+                ${name || "-"}
+              </span>
+            </td>
 
-          card.innerHTML = `
+            <td>
+              ${category || "-"}
+            </td>
 
-            <h2>
-              ${name || "Nama tempat belum ada"}
-            </h2>
+            <td>
+              ${area || "-"}
+            </td>
 
+            <td>
+              ${food || "-"}
+            </td>
 
-            ${
-              category
-                ? `<p class="info">
-                    🍽️ Kategori: ${category}
-                   </p>`
-                : ""
-            }
+            <td>
+              ${ambience || "-"}
+            </td>
 
+            <td>
+              ${time || "-"}
+            </td>
 
-            ${
-              area
-                ? `<p class="info">
-                    📍 Area: ${area}
-                   </p>`
-                : ""
-            }
+            <td>
+              ${revisit || "-"}
+            </td>
 
+            <td class="status">
+              ${visitStatus || "-"}
+            </td>
 
-            ${
-              foodRating
-                ? `<p class="info">
-                    ⭐ F&B: ${foodRating}
-                   </p>`
-                : ""
-            }
+            <td>
 
+              <a
+                class="maps-button"
+                href="${mapsLink}"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                📍
+              </a>
 
-            ${
-              ambience
-                ? `<p class="info">
-                    ✨ Ambience: ${ambience}
-                   </p>`
-                : ""
-            }
-
-
-            ${
-              time
-                ? `<p class="info">
-                    🕐 Time: ${time}
-                   </p>`
-                : ""
-            }
-
-
-            ${
-              revisit
-                ? `<p class="info">
-                    🔄 Revisit: ${revisit}
-                   </p>`
-                : ""
-            }
-
-
-            ${
-              visitStatus
-                ? `<p class="info">
-                    📋 Status: ${visitStatus}
-                   </p>`
-                : ""
-            }
-
-
-            ${
-              spotHere
-                ? `<a
-                    class="maps-button"
-                    href="${mapsLink}"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    📍 Open Google Maps
-                  </a>`
-                : ""
-            }
+            </td>
 
           `;
 
 
-          list.appendChild(card);
+          tbody.appendChild(tr);
 
         }
       );
+
+
+      wrapper.appendChild(table);
+
+      container.appendChild(wrapper);
 
     }
 
 
     // =========================
-    // BUTTON WANT TO TRY
+    // WANT TO TRY BUTTON
     // =========================
 
     document
@@ -650,12 +832,18 @@
           currentMode = "want";
 
 
-          this.classList.add("active");
+          this.classList.add(
+            "active"
+          );
 
 
           document
-            .getElementById("visitedButton")
-            .classList.remove("active");
+            .getElementById(
+              "visitedButton"
+            )
+            .classList.remove(
+              "active"
+            );
 
 
           renderRestaurants();
@@ -665,7 +853,7 @@
 
 
     // =========================
-    // BUTTON VISITED
+    // VISITED BUTTON
     // =========================
 
     document
@@ -677,12 +865,18 @@
           currentMode = "visited";
 
 
-          this.classList.add("active");
+          this.classList.add(
+            "active"
+          );
 
 
           document
-            .getElementById("wantButton")
-            .classList.remove("active");
+            .getElementById(
+              "wantButton"
+            )
+            .classList.remove(
+              "active"
+            );
 
 
           renderRestaurants();
@@ -692,7 +886,7 @@
 
 
     // =========================
-    // MULAI
+    // START
     // =========================
 
     loadRestaurants();
