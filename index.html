@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -72,12 +72,12 @@
 
     .card h2 {
       margin-top: 0;
-      margin-bottom: 8px;
+      margin-bottom: 10px;
     }
 
     .info {
       color: #666;
-      margin: 5px 0;
+      margin: 7px 0;
     }
 
     .maps-button {
@@ -114,6 +114,7 @@
     </p>
 
     <div class="buttons">
+
       <button id="wantButton" class="active">
         💗 Want to Try
       </button>
@@ -121,6 +122,7 @@
       <button id="visitedButton">
         💚 Visited
       </button>
+
     </div>
 
     <div id="count"></div>
@@ -138,15 +140,12 @@
 
   <script>
 
-    // =========================
-    // GOOGLE SHEET LO
-    // =========================
-
     const CSV_URL =
       "https://docs.google.com/spreadsheets/d/e/2PACX-1vRGeVKCr17Fo4yJfkrhh138fDmabvVz2n6X_U8Rt3de82bovXJe3t_VdTmTCyTva1dd7LsXLjJU755e/pub?gid=822459822&single=true&output=csv";
 
 
     let restaurants = [];
+
     let currentMode = "want";
 
 
@@ -157,58 +156,87 @@
     function parseCSV(text) {
 
       const rows = [];
+
       let row = [];
+
       let cell = "";
+
       let insideQuotes = false;
+
 
       for (let i = 0; i < text.length; i++) {
 
         const char = text[i];
+
         const nextChar = text[i + 1];
 
+
         if (char === '"' && insideQuotes && nextChar === '"') {
+
           cell += '"';
+
           i++;
+
         }
 
         else if (char === '"') {
+
           insideQuotes = !insideQuotes;
+
         }
 
         else if (char === "," && !insideQuotes) {
+
           row.push(cell);
+
           cell = "";
+
         }
 
-        else if ((char === "\n" || char === "\r") && !insideQuotes) {
+        else if (
+          (char === "\n" || char === "\r") &&
+          !insideQuotes
+        ) {
 
           if (char === "\r" && nextChar === "\n") {
             i++;
           }
 
           row.push(cell);
+
           rows.push(row);
 
           row = [];
+
           cell = "";
+
         }
 
         else {
+
           cell += char;
+
         }
+
       }
+
 
       if (cell !== "" || row.length > 0) {
+
         row.push(cell);
+
         rows.push(row);
+
       }
 
+
       return rows;
+
     }
 
 
     // =========================
-    // NORMALISASI NAMA KOLOM
+    // NORMALISASI
     // =========================
 
     function normalize(text) {
@@ -217,23 +245,54 @@
         .toLowerCase()
         .trim()
         .replace(/\s+/g, " ");
+
     }
 
 
-    function findHeader(headers, possibleNames) {
+    // =========================
+    // MENCARI ISI KOLOM
+    // =========================
 
-      for (const name of possibleNames) {
+    function getColumn(restaurant, columnName) {
 
-        const found = headers.find(
-          header => normalize(header) === normalize(name)
-        );
+      const header = Object.keys(restaurant).find(
 
-        if (found) {
-          return found;
-        }
+        header =>
+          normalize(header) === normalize(columnName)
+
+      );
+
+
+      if (!header) {
+        return "";
       }
 
-      return null;
+
+      return restaurant[header] || "";
+
+    }
+
+
+    // =========================
+    // CEK SUDAH VISIT
+    // =========================
+
+    function isVisited(restaurant) {
+
+      const status =
+        normalize(
+          getColumn(restaurant, "udah apa belom")
+        );
+
+
+      return (
+        status.includes("sudah") ||
+        status.includes("udah") ||
+        status.includes("visited") ||
+        status === "yes" ||
+        status === "ya"
+      );
+
     }
 
 
@@ -247,96 +306,86 @@
 
         const response = await fetch(CSV_URL);
 
+
         if (!response.ok) {
-          throw new Error("Google Sheet tidak bisa dibaca.");
+
+          throw new Error(
+            "Google Sheet tidak bisa dibaca."
+          );
+
         }
+
 
         const text = await response.text();
 
+
         const rows = parseCSV(text);
 
+
         if (rows.length < 2) {
-          throw new Error("Data restoran masih kosong.");
+
+          throw new Error(
+            "Data restoran masih kosong."
+          );
+
         }
+
 
         const headers = rows[0];
 
+
         restaurants = rows
           .slice(1)
-          .filter(row => row.some(cell => String(cell).trim() !== ""))
+          .filter(row =>
+            row.some(
+              cell => String(cell).trim() !== ""
+            )
+          )
           .map(row => {
 
             const restaurant = {};
 
-            headers.forEach((header, index) => {
-              restaurant[header] = row[index] || "";
-            });
+
+            headers.forEach(
+              (header, index) => {
+
+                restaurant[header] =
+                  row[index] || "";
+
+              }
+            );
+
 
             return restaurant;
+
           });
 
 
-        document.getElementById("loading").style.display = "none";
+        document.getElementById("loading")
+          .style.display = "none";
+
 
         renderRestaurants();
 
       }
 
+
       catch (error) {
 
-        document.getElementById("loading").style.display = "none";
+        document.getElementById("loading")
+          .style.display = "none";
 
-        document.getElementById("error").textContent =
-          "Aduh, datanya belum bisa dibaca 😭 " + error.message;
+
+        document.getElementById("error")
+          .textContent =
+            "Aduh, datanya belum bisa dibaca 😭 " +
+            error.message;
+
 
         console.error(error);
+
       }
-    }
 
-
-    // =========================
-    // CARI KOLOM
-    // =========================
-
-    function getColumn(restaurant, keywords) {
-
-      const headers = Object.keys(restaurant);
-
-      const header = headers.find(header => {
-
-        const normalized = normalize(header);
-
-        return keywords.some(keyword =>
-          normalized.includes(normalize(keyword))
-        );
-
-      });
-
-      return header ? restaurant[header] : "";
-    }
-
-
-    // =========================
-    // CEK SUDAH VISIT ATAU BELUM
-    // =========================
-
-    function isVisited(restaurant) {
-
-      const status = getColumn(restaurant, [
-        "udah visit apa belum",
-        "sudah visit apa belum",
-        "status visit"
-      ]);
-
-      const value = normalize(status);
-
-      return (
-        value.includes("sudah") ||
-        value.includes("udah") ||
-        value.includes("visited") ||
-        value === "yes" ||
-        value === "ya"
-      );
     }
 
 
@@ -346,9 +395,14 @@
 
     function renderRestaurants() {
 
-      const list = document.getElementById("restaurantList");
+      const list =
+        document.getElementById(
+          "restaurantList"
+        );
+
 
       list.innerHTML = "";
+
 
       let filteredRestaurants;
 
@@ -356,162 +410,285 @@
       if (currentMode === "want") {
 
         filteredRestaurants =
-          restaurants.filter(restaurant => !isVisited(restaurant));
+          restaurants.filter(
+            restaurant => !isVisited(restaurant)
+          );
 
-      } else {
+      }
+
+      else {
 
         filteredRestaurants =
-          restaurants.filter(restaurant => isVisited(restaurant));
+          restaurants.filter(
+            restaurant => isVisited(restaurant)
+          );
 
       }
 
 
-      document.getElementById("count").textContent =
-        filteredRestaurants.length + " tempat";
+      document.getElementById("count")
+        .textContent =
+          filteredRestaurants.length +
+          " tempat";
 
 
       if (filteredRestaurants.length === 0) {
 
         list.innerHTML = `
+
           <div class="card">
+
             <h2>Belum ada data 😭</h2>
+
             <p>
-              Coba cek lagi kolom "Sudah visit apa belum"
-              di Google Sheet lo.
+              Coba cek lagi kolom
+              "udah apa belom" di Google Sheet lo.
             </p>
+
           </div>
+
         `;
 
         return;
+
       }
 
 
-      filteredRestaurants.forEach(restaurant => {
-
-        const name =
-          getColumn(restaurant, ["nama tempat"]) ||
-          "Nama restoran tidak ditemukan";
+      filteredRestaurants.forEach(
+        restaurant => {
 
 
-        const address =
-          getColumn(restaurant, [
-            "alamat di google maps",
-            "alamat di gmaps",
-            "alamat"
-          ]);
+          const name =
+            getColumn(
+              restaurant,
+              "nih tempatnya"
+            );
 
 
-        const area =
-          getColumn(restaurant, ["area"]);
+          const category =
+            getColumn(
+              restaurant,
+              "kategori"
+            );
 
 
-        const category =
-          getColumn(restaurant, [
-            "kategori",
-            "category"
-          ]);
+          const spotHere =
+            getColumn(
+              restaurant,
+              "spot here"
+            );
 
 
-        const foodRating =
-          getColumn(restaurant, [
-            "rating makanannya",
-            "rating makanan"
-          ]);
+          const area =
+            getColumn(
+              restaurant,
+              "area"
+            );
 
 
-        const ambienceRating =
-          getColumn(restaurant, [
-            "rating ambience nya",
-            "rating ambience"
-          ]);
+          const visitStatus =
+            getColumn(
+              restaurant,
+              "udah apa belom"
+            );
 
 
-        const mapsSearch =
-          "https://www.google.com/maps/search/?api=1&query=" +
-          encodeURIComponent(name + " " + address);
+          const foodRating =
+            getColumn(
+              restaurant,
+              "f&b"
+            );
 
 
-        const card = document.createElement("div");
-
-        card.className = "card";
-
-
-        card.innerHTML = `
-
-          <h2>${name}</h2>
-
-          ${area ? `<p class="info">📍 ${area}</p>` : ""}
-
-          ${category ? `<p class="info">🍽️ ${category}</p>` : ""}
-
-          ${address ? `<p class="info">🗺️ ${address}</p>` : ""}
-
-          ${
-            foodRating
-              ? `<p class="info">⭐ Food: ${foodRating}</p>`
-              : ""
-          }
-
-          ${
-            ambienceRating
-              ? `<p class="info">✨ Ambience: ${ambienceRating}</p>`
-              : ""
-          }
-
-          <a
-            class="maps-button"
-            href="${mapsSearch}"
-            target="_blank"
-          >
-            📍 Open Google Maps
-          </a>
-
-        `;
+          const ambience =
+            getColumn(
+              restaurant,
+              "ambience"
+            );
 
 
-        list.appendChild(card);
+          const time =
+            getColumn(
+              restaurant,
+              "time"
+            );
 
-      });
+
+          const revisit =
+            getColumn(
+              restaurant,
+              "revisit?"
+            );
+
+
+          const mapsLink =
+            spotHere &&
+            (
+              spotHere.startsWith("http://") ||
+              spotHere.startsWith("https://")
+            )
+              ? spotHere
+              : (
+                "https://www.google.com/maps/search/?api=1&query=" +
+                encodeURIComponent(
+                  name + " " + spotHere
+                )
+              );
+
+
+          const card =
+            document.createElement("div");
+
+
+          card.className = "card";
+
+
+          card.innerHTML = `
+
+            <h2>
+              ${name || "Nama tempat belum ada"}
+            </h2>
+
+
+            ${
+              category
+                ? `<p class="info">
+                    🍽️ Kategori: ${category}
+                   </p>`
+                : ""
+            }
+
+
+            ${
+              area
+                ? `<p class="info">
+                    📍 Area: ${area}
+                   </p>`
+                : ""
+            }
+
+
+            ${
+              foodRating
+                ? `<p class="info">
+                    ⭐ F&B: ${foodRating}
+                   </p>`
+                : ""
+            }
+
+
+            ${
+              ambience
+                ? `<p class="info">
+                    ✨ Ambience: ${ambience}
+                   </p>`
+                : ""
+            }
+
+
+            ${
+              time
+                ? `<p class="info">
+                    🕐 Time: ${time}
+                   </p>`
+                : ""
+            }
+
+
+            ${
+              revisit
+                ? `<p class="info">
+                    🔄 Revisit: ${revisit}
+                   </p>`
+                : ""
+            }
+
+
+            ${
+              visitStatus
+                ? `<p class="info">
+                    📋 Status: ${visitStatus}
+                   </p>`
+                : ""
+            }
+
+
+            ${
+              spotHere
+                ? `<a
+                    class="maps-button"
+                    href="${mapsLink}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    📍 Open Google Maps
+                  </a>`
+                : ""
+            }
+
+          `;
+
+
+          list.appendChild(card);
+
+        }
+      );
 
     }
 
 
     // =========================
-    // BUTTON
+    // BUTTON WANT TO TRY
     // =========================
 
     document
       .getElementById("wantButton")
-      .addEventListener("click", function() {
+      .addEventListener(
+        "click",
+        function() {
 
-        currentMode = "want";
+          currentMode = "want";
 
-        this.classList.add("active");
 
-        document
-          .getElementById("visitedButton")
-          .classList.remove("active");
+          this.classList.add("active");
 
-        renderRestaurants();
 
-      });
+          document
+            .getElementById("visitedButton")
+            .classList.remove("active");
 
+
+          renderRestaurants();
+
+        }
+      );
+
+
+    // =========================
+    // BUTTON VISITED
+    // =========================
 
     document
       .getElementById("visitedButton")
-      .addEventListener("click", function() {
+      .addEventListener(
+        "click",
+        function() {
 
-        currentMode = "visited";
+          currentMode = "visited";
 
-        this.classList.add("active");
 
-        document
-          .getElementById("wantButton")
-          .classList.remove("active");
+          this.classList.add("active");
 
-        renderRestaurants();
 
-      });
+          document
+            .getElementById("wantButton")
+            .classList.remove("active");
+
+
+          renderRestaurants();
+
+        }
+      );
 
 
     // =========================
