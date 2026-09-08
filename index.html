@@ -1,89 +1,526 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Caca's Food Roulette</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            background: #fff8f2;
-            margin: 0;
-            padding: 50px 20px;
-        }
+  <title>Caca's Food Roulette</title>
 
-        h1 {
-            font-size: 42px;
-            margin-bottom: 10px;
-        }
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #fff7fb;
+      margin: 0;
+      padding: 30px 20px;
+      color: #333;
+    }
 
-        p {
-            font-size: 18px;
-            color: #666;
-        }
+    .container {
+      max-width: 900px;
+      margin: auto;
+    }
 
-        .container {
-            max-width: 700px;
-            margin: auto;
-        }
+    h1 {
+      text-align: center;
+      margin-bottom: 5px;
+    }
 
-        .buttons {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            margin-top: 40px;
-        }
+    .subtitle {
+      text-align: center;
+      color: #777;
+      margin-bottom: 30px;
+    }
 
-        button {
-            border: none;
-            padding: 20px 30px;
-            border-radius: 15px;
-            font-size: 18px;
-            font-weight: bold;
-            cursor: pointer;
-            background: white;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
+    .buttons {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 25px;
+    }
 
-        button:hover {
-            transform: scale(1.05);
-        }
+    button {
+      border: none;
+      padding: 12px 20px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 15px;
+      background: #eee;
+    }
 
-        .spin {
-            margin-top: 50px;
-            background: #222;
-            color: white;
-            padding: 20px 50px;
-            border-radius: 50px;
-        }
-    </style>
+    button.active {
+      background: #ff8fbd;
+      color: white;
+    }
+
+    #count {
+      text-align: center;
+      margin-bottom: 20px;
+      color: #777;
+    }
+
+    .restaurant-list {
+      display: grid;
+      gap: 15px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 3px 12px rgba(0,0,0,0.08);
+    }
+
+    .card h2 {
+      margin-top: 0;
+      margin-bottom: 8px;
+    }
+
+    .info {
+      color: #666;
+      margin: 5px 0;
+    }
+
+    .maps-button {
+      display: inline-block;
+      margin-top: 12px;
+      padding: 9px 14px;
+      background: #eee;
+      border-radius: 10px;
+      text-decoration: none;
+      color: #333;
+    }
+
+    #loading {
+      text-align: center;
+      padding: 30px;
+    }
+
+    #error {
+      text-align: center;
+      color: #d33;
+      padding: 20px;
+    }
+  </style>
 </head>
 
 <body>
 
-    <div class="container">
+  <div class="container">
 
-        <h1>🍜 Caca's Food Roulette</h1>
+    <h1>🍜 Caca's Food Roulette</h1>
 
-        <p>Males milih makan di mana?</p>
-        <p>Yaudah, biar nasib yang milih. 🎰</p>
+    <p class="subtitle">
+      Males milih makan dimana? Yaudah, biar nasib yang milih. 🎰
+    </p>
 
-        <div class="buttons">
-            <button>💗 Want to Try</button>
-            <button>💚 Visited</button>
-        </div>
+    <div class="buttons">
+      <button id="wantButton" class="active">
+        💗 Want to Try
+      </button>
 
-        <button class="spin" onclick="spin()">🎰 SPIN</button>
-
+      <button id="visitedButton">
+        💚 Visited
+      </button>
     </div>
-    
-<script>
-    function spin() {
-        alert("🎰 BELUM ADA RESTORANNYA 😭\n\nTapi tombol SPIN lo sudah hidup!");
+
+    <div id="count"></div>
+
+    <div id="loading">
+      Lagi mengambil data restoran... 🍜
+    </div>
+
+    <div id="error"></div>
+
+    <div id="restaurantList" class="restaurant-list"></div>
+
+  </div>
+
+
+  <script>
+
+    // =========================
+    // GOOGLE SHEET LO
+    // =========================
+
+    const CSV_URL =
+      "https://docs.google.com/spreadsheets/d/e/2PACX-1vRGeVKCr17Fo4yJfkrhh138fDmabvVz2n6X_U8Rt3de82bovXJe3t_VdTmTCyTva1dd7LsXLjJU755e/pub?gid=822459822&single=true&output=csv";
+
+
+    let restaurants = [];
+    let currentMode = "want";
+
+
+    // =========================
+    // MEMBACA CSV
+    // =========================
+
+    function parseCSV(text) {
+
+      const rows = [];
+      let row = [];
+      let cell = "";
+      let insideQuotes = false;
+
+      for (let i = 0; i < text.length; i++) {
+
+        const char = text[i];
+        const nextChar = text[i + 1];
+
+        if (char === '"' && insideQuotes && nextChar === '"') {
+          cell += '"';
+          i++;
+        }
+
+        else if (char === '"') {
+          insideQuotes = !insideQuotes;
+        }
+
+        else if (char === "," && !insideQuotes) {
+          row.push(cell);
+          cell = "";
+        }
+
+        else if ((char === "\n" || char === "\r") && !insideQuotes) {
+
+          if (char === "\r" && nextChar === "\n") {
+            i++;
+          }
+
+          row.push(cell);
+          rows.push(row);
+
+          row = [];
+          cell = "";
+        }
+
+        else {
+          cell += char;
+        }
+      }
+
+      if (cell !== "" || row.length > 0) {
+        row.push(cell);
+        rows.push(row);
+      }
+
+      return rows;
     }
-</script>
-    
+
+
+    // =========================
+    // NORMALISASI NAMA KOLOM
+    // =========================
+
+    function normalize(text) {
+
+      return String(text || "")
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, " ");
+    }
+
+
+    function findHeader(headers, possibleNames) {
+
+      for (const name of possibleNames) {
+
+        const found = headers.find(
+          header => normalize(header) === normalize(name)
+        );
+
+        if (found) {
+          return found;
+        }
+      }
+
+      return null;
+    }
+
+
+    // =========================
+    // LOAD DATA
+    // =========================
+
+    async function loadRestaurants() {
+
+      try {
+
+        const response = await fetch(CSV_URL);
+
+        if (!response.ok) {
+          throw new Error("Google Sheet tidak bisa dibaca.");
+        }
+
+        const text = await response.text();
+
+        const rows = parseCSV(text);
+
+        if (rows.length < 2) {
+          throw new Error("Data restoran masih kosong.");
+        }
+
+        const headers = rows[0];
+
+        restaurants = rows
+          .slice(1)
+          .filter(row => row.some(cell => String(cell).trim() !== ""))
+          .map(row => {
+
+            const restaurant = {};
+
+            headers.forEach((header, index) => {
+              restaurant[header] = row[index] || "";
+            });
+
+            return restaurant;
+          });
+
+
+        document.getElementById("loading").style.display = "none";
+
+        renderRestaurants();
+
+      }
+
+      catch (error) {
+
+        document.getElementById("loading").style.display = "none";
+
+        document.getElementById("error").textContent =
+          "Aduh, datanya belum bisa dibaca 😭 " + error.message;
+
+        console.error(error);
+      }
+    }
+
+
+    // =========================
+    // CARI KOLOM
+    // =========================
+
+    function getColumn(restaurant, keywords) {
+
+      const headers = Object.keys(restaurant);
+
+      const header = headers.find(header => {
+
+        const normalized = normalize(header);
+
+        return keywords.some(keyword =>
+          normalized.includes(normalize(keyword))
+        );
+
+      });
+
+      return header ? restaurant[header] : "";
+    }
+
+
+    // =========================
+    // CEK SUDAH VISIT ATAU BELUM
+    // =========================
+
+    function isVisited(restaurant) {
+
+      const status = getColumn(restaurant, [
+        "udah visit apa belum",
+        "sudah visit apa belum",
+        "status visit"
+      ]);
+
+      const value = normalize(status);
+
+      return (
+        value.includes("sudah") ||
+        value.includes("udah") ||
+        value.includes("visited") ||
+        value === "yes" ||
+        value === "ya"
+      );
+    }
+
+
+    // =========================
+    // TAMPILKAN RESTORAN
+    // =========================
+
+    function renderRestaurants() {
+
+      const list = document.getElementById("restaurantList");
+
+      list.innerHTML = "";
+
+      let filteredRestaurants;
+
+
+      if (currentMode === "want") {
+
+        filteredRestaurants =
+          restaurants.filter(restaurant => !isVisited(restaurant));
+
+      } else {
+
+        filteredRestaurants =
+          restaurants.filter(restaurant => isVisited(restaurant));
+
+      }
+
+
+      document.getElementById("count").textContent =
+        filteredRestaurants.length + " tempat";
+
+
+      if (filteredRestaurants.length === 0) {
+
+        list.innerHTML = `
+          <div class="card">
+            <h2>Belum ada data 😭</h2>
+            <p>
+              Coba cek lagi kolom "Sudah visit apa belum"
+              di Google Sheet lo.
+            </p>
+          </div>
+        `;
+
+        return;
+      }
+
+
+      filteredRestaurants.forEach(restaurant => {
+
+        const name =
+          getColumn(restaurant, ["nama tempat"]) ||
+          "Nama restoran tidak ditemukan";
+
+
+        const address =
+          getColumn(restaurant, [
+            "alamat di google maps",
+            "alamat di gmaps",
+            "alamat"
+          ]);
+
+
+        const area =
+          getColumn(restaurant, ["area"]);
+
+
+        const category =
+          getColumn(restaurant, [
+            "kategori",
+            "category"
+          ]);
+
+
+        const foodRating =
+          getColumn(restaurant, [
+            "rating makanannya",
+            "rating makanan"
+          ]);
+
+
+        const ambienceRating =
+          getColumn(restaurant, [
+            "rating ambience nya",
+            "rating ambience"
+          ]);
+
+
+        const mapsSearch =
+          "https://www.google.com/maps/search/?api=1&query=" +
+          encodeURIComponent(name + " " + address);
+
+
+        const card = document.createElement("div");
+
+        card.className = "card";
+
+
+        card.innerHTML = `
+
+          <h2>${name}</h2>
+
+          ${area ? `<p class="info">📍 ${area}</p>` : ""}
+
+          ${category ? `<p class="info">🍽️ ${category}</p>` : ""}
+
+          ${address ? `<p class="info">🗺️ ${address}</p>` : ""}
+
+          ${
+            foodRating
+              ? `<p class="info">⭐ Food: ${foodRating}</p>`
+              : ""
+          }
+
+          ${
+            ambienceRating
+              ? `<p class="info">✨ Ambience: ${ambienceRating}</p>`
+              : ""
+          }
+
+          <a
+            class="maps-button"
+            href="${mapsSearch}"
+            target="_blank"
+          >
+            📍 Open Google Maps
+          </a>
+
+        `;
+
+
+        list.appendChild(card);
+
+      });
+
+    }
+
+
+    // =========================
+    // BUTTON
+    // =========================
+
+    document
+      .getElementById("wantButton")
+      .addEventListener("click", function() {
+
+        currentMode = "want";
+
+        this.classList.add("active");
+
+        document
+          .getElementById("visitedButton")
+          .classList.remove("active");
+
+        renderRestaurants();
+
+      });
+
+
+    document
+      .getElementById("visitedButton")
+      .addEventListener("click", function() {
+
+        currentMode = "visited";
+
+        this.classList.add("active");
+
+        document
+          .getElementById("wantButton")
+          .classList.remove("active");
+
+        renderRestaurants();
+
+      });
+
+
+    // =========================
+    // MULAI
+    // =========================
+
+    loadRestaurants();
+
+  </script>
+
 </body>
 </html>
